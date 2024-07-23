@@ -2,12 +2,14 @@ include(FetchContent)
 include(GNUInstallDirs)
 find_package(PkgConfig QUIET)
 find_package(Clipper2 QUIET)
+
 if(MANIFOLD_PAR STREQUAL "TBB")
     find_package(TBB QUIET)
     if(APPLE)
         find_package(oneDPL QUIET)
     endif()
 endif()
+
 if (PKG_CONFIG_FOUND)
     if (NOT Clipper2_FOUND)
         pkg_check_modules(Clipper2 Clipper2)
@@ -16,6 +18,7 @@ if (PKG_CONFIG_FOUND)
         pkg_check_modules(TBB tbb)
     endif()
 endif()
+
 if(Clipper2_FOUND)
     add_library(Clipper2 SHARED IMPORTED)
     set_property(TARGET Clipper2 PROPERTY
@@ -70,13 +73,33 @@ if(MANIFOLD_PAR STREQUAL "TBB" AND NOT TBB_FOUND)
     )
     FetchContent_MakeAvailable(TBB)
     set_property(DIRECTORY ${tbb_SOURCE_DIR} PROPERTY EXCLUDE_FROM_ALL YES)
-    # note: we do want to install tbb to the user machine when built from
-    # source
     if(NOT EMSCRIPTEN)
         install(TARGETS tbb)
     endif()
 endif()
 
 if(MANIFOLD_EXPORT)
-    find_package(assimp REQUIRED)
+    find_package(assimp QUIET)
+    if(NOT assimp_FOUND)
+        message(STATUS "assimp not found, downloading from source")
+        FetchContent_Declare(assimp
+            GIT_REPOSITORY https://github.com/assimp/assimp.git
+            GIT_TAG v5.2.5
+            GIT_PROGRESS TRUE
+        )
+        FetchContent_MakeAvailable(assimp)
+        if(NOT TARGET assimp)
+            add_library(assimp SHARED IMPORTED)
+            set_property(TARGET assimp PROPERTY
+                IMPORTED_LOCATION ${assimp_LINK_LIBRARIES})
+            if(WIN32)
+                set_property(TARGET assimp PROPERTY
+                    IMPORTED_IMPLIB ${assimp_LINK_LIBRARIES})
+            endif()
+            target_include_directories(assimp INTERFACE ${assimp_INCLUDE_DIRS})
+            if(NOT EMSCRIPTEN)
+                install(TARGETS assimp)
+            endif()
+        endif()
+    endif()
 endif()
